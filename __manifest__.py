@@ -1,5 +1,5 @@
 {
-    'name' : "zip_cep_api_correios",
+    'name' : "zip_cep_api_correios_09",
     'version' : "1.0",
     'description' : 'Search adress by using the field ZIP(CEP)',
     'author' : "Rafael Lino, http://rafaellino.com.br/", 
