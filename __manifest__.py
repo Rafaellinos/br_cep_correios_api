@@ -1,8 +1,7 @@
 {
-    'name' : "zip_cep_api_correios_09",
+    'name' : "br_viacep_api",
     'version' : "1.0",
-    'description' : 'Search adress by using the field ZIP(CEP)',
+    'description' : 'Search adress by using ViaCEP API.',
     'author' : "Rafael Lino, http://rafaellino.com.br/", 
-    #'data' : ['views/'],
     'installable' : True,
 }

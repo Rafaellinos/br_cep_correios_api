@@ -1,4 +1,5 @@
-from openerp import models, fields, api, _
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 import requests
 import json
 
@@ -26,10 +27,13 @@ class ResPartner(models.Model):
                 response = requests.get(url_api)
                 if response.status_code == 200:
                     dict_api = json.loads(response.text)
-                    br_country = self.env['res.country'].search([('name','=', 'Brasil')], limit=1)
-                    state = self.env['res.country.state'].search([('code','=', dict_api['uf']),('country_id','=',br_country.id)], limit=1)
-                    if state:
-                        self.state_id = state.id
-                    self.street = dict_api['logradouro']
-                    self.city = dict_api['localidade']
-                    self.street2 = dict_api['bairro']
+                    if 'erro' in dict_api.keys():
+                        raise ValidationError(('CEP inválido ou não encontrado'))
+                    else:
+                        br_country = self.env['res.country'].search([('name','=', 'Brasil')], limit=1)
+                        state = self.env['res.country.state'].search([('code','=', dict_api['uf']),('country_id','=',br_country.id)], limit=1)
+                        if state:
+                            self.state_id = state.id
+                        self.street = dict_api['logradouro']
+                        self.city = dict_api['localidade']
+                        self.street2 = dict_api['bairro']
