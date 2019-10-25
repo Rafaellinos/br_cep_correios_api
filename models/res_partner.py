@@ -21,7 +21,7 @@ class ResPartner(models.Model):
     @api.onchange('zip')
     def search_cep(self):
         if self.zip:
-            zip_last = self.zip.replace('-','').replace(';','').replace('--','').replace(')','').replace('(','')
+            zip_last = self.zip.replace('-','').replace(';','').replace('--','').replace(')','').replace('(','').replace(' ','')
             if len(zip_last) == 8:
                 url_api = ('https://viacep.com.br/ws/%s/json' % zip_last)
                 response = requests.get(url_api)
