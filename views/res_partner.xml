@@ -1,0 +1,15 @@
+ 
+<odoo>
+    <data>
+        <record id="res_partner_viacep_inherit" model="ir.ui.view">
+            <field name="name">res.partner.viacep.form.inherit</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <field name="zip" position="after">
+                    <button name="search_cep" type="object" icon="fa-search"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>
