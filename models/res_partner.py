@@ -1,50 +1,49 @@
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo import models, api
 import requests
-import json
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    zip = fields.Char(string=u'CEP')
-    street = fields.Char(string=u'Endereço')
-    district = fields.Char(string=u'Bairro')
-    country_id = fields.Many2one(
-        string=u'País',
-        comodel_name='res.country')
-    city_id = fields.Many2one(
-        'res.state.city', u'Cidade',
-        domain="[('state_id','=',state_id)]")
-    state_id = fields.Many2one(
-        string=u'Estado',
-        comodel_name='res.country.state',
-        ondelete='restrict',
-        domain="[('country_id', '=?', country_id)]")
+    def _get_cep_endpoint(self):
+        return self.env['ir.config_parameter'].sudo().get_param('viacep_endpoint', default=False)
+
+    def _get_cep(self, cep):
+        endpoint = self._get_cep_endpoint()
+        try:
+            r = requests.get(f"{endpoint}/ws/{cep}/json")
+            if r.status_code == 200:
+                if not 'err' in dict(r.json()).keys():
+                    return r.json()
+                return None
+            return None
+        except Exception as err:
+            print(f"ERROR API VIACEP: {err}")
+            return None
 
 
-    #@api.onchange('zip')
+    @api.onchange('zip')
     def search_cep(self):
-        if self.zip:
-            zip_last = self.zip.replace('-','').replace(';','').replace('--','').replace(')','').replace('(','').replace(' ','')
-            if len(zip_last) == 8:
-                url_api = ('https://viacep.com.br/ws/%s/json' % zip_last)
-                response = requests.get(url_api)
-                if response.status_code == 200:
-                    dict_api = json.loads(response.text)
-                    if 'erro' in dict_api.keys():
-                        raise ValidationError(('CEP inválido ou não encontrado'))
-                    else:
-                        br_country = self.env['res.country'].search([('code','=', 'BR')], limit=1)
-                        if br_country:
-                            self.country_id = br_country.id
-                            state = self.env['res.country.state'].search([('code','=', dict_api['uf']),('country_id','=',br_country.id)], limit=1)
-                            if state:
-                                self.state_id = state.id
-                            city = self.env['res.state.city'].search([('name','=', dict_api['localidade'])], limit=1)
-                            if city:
-                                self.city_id = city.id
-                        self.street = dict_api['logradouro']
-                        self.district = dict_api['bairro']
-                else:
-                    raise ValidationError(('Erro de conexão com o servidor ViaCEP'))
+        for record in self:
+            
+            zip_code = record.zip
+            if not zip_code:
+                return 
+
+            to_replece = [('-',''),(';',''),('--',''),(')',''),(')','')]
+            for i in to_replece:
+                zip_code = zip_code.replace(i[0],i[1])
+
+            if not all(x.isdigit() for x in zip_code):
+                return
+            
+            cep = self._get_cep(zip_code)
+            if cep:
+                br_country = self.env['res.country'].search([('name','=', 'Brasil')], limit=1).id
+                state = self.env['res.country.state'].search([('code','=', cep.get('uf'))], limit=1).id
+                record.write({
+                    'street': cep.get('logradouro'),
+                    'street2': cep.get('bairro'),
+                    'country_id': br_country,
+                    'state_id': state,
+                    'city': cep.get('localidade')})
