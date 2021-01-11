@@ -30,7 +30,7 @@ class ResPartner(models.Model):
             _logger.error(_("timeout viacep connection"))
             return
         except InvalidSchema:
-            _logger(_("invalid url scheme for viacep param"))
+            _logger.error(_("invalid url scheme for viacep param"))
             raise ValidationError(_("Invlid Url"))
 
 
