@@ -1,5 +1,14 @@
-from odoo import models, api
+
 import requests
+from requests.exceptions import Timeout, InvalidSchema
+import logging
+import re
+
+from odoo import models, api, _
+from odoo.exceptions import ValidationError
+
+
+_logger = logging.getLogger(__name__)
 
 
 class ResPartner(models.Model):
@@ -10,16 +19,19 @@ class ResPartner(models.Model):
 
     def _get_cep(self, cep):
         endpoint = self._get_cep_endpoint()
+        if not endpoint:
+            raise ValidationError(_("The param \"viacep_endpoint\" is mandatory!"))
         try:
-            r = requests.get(f"{endpoint}/ws/{cep}/json")
+            r = requests.get(f"{endpoint}/ws/{cep}/json", timeout=5)
             if r.status_code == 200:
-                if not 'err' in dict(r.json()).keys():
+                if 'err' not in dict(r.json()).keys():
                     return r.json()
-                return None
-            return None
-        except Exception as err:
-            print(f"ERROR API VIACEP: {err}")
-            return None
+        except Timeout:
+            _logger.error(_("timeout viacep connection"))
+            return
+        except InvalidSchema:
+            _logger(_("invalid url scheme for viacep param"))
+            raise ValidationError(_("Invlid Url"))
 
 
     @api.onchange('zip')
@@ -30,20 +42,18 @@ class ResPartner(models.Model):
             if not zip_code:
                 return 
 
-            to_replece = [('-',''),(';',''),('--',''),(')',''),(')','')]
-            for i in to_replece:
-                zip_code = zip_code.replace(i[0],i[1])
-
-            if not all(x.isdigit() for x in zip_code):
-                return
-            
-            cep = self._get_cep(zip_code)
+            cep = self._get_cep(re.sub(r'[^A-Za-z0-9]+', r'', zip_code))
             if cep:
-                br_country = self.env['res.country'].search([('name','=', 'Brasil')], limit=1).id
-                state = self.env['res.country.state'].search([('code','=', cep.get('uf'))], limit=1).id
+                br_country = self.env['res.country'] \
+                    .with_context(lang='en_US') \
+                    .search([('name','=', 'Brazil')], limit=1)
+
+                state = self.env['res.country.state'] \
+                    .search([('code','=', cep.get('uf'))], limit=1)
+
                 record.write({
                     'street': cep.get('logradouro'),
                     'street2': cep.get('bairro'),
-                    'country_id': br_country,
-                    'state_id': state,
+                    'country_id': getattr(br_country, "id", False),
+                    'state_id': getattr(state, "id", False),
                     'city': cep.get('localidade')})
