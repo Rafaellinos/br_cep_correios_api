@@ -28,10 +28,8 @@ class ResPartner(models.Model):
                     return r.json()
         except Timeout:
             _logger.error(_("timeout viacep connection"))
-            return
         except InvalidSchema:
             _logger.error(_("invalid url scheme for viacep param"))
-            raise ValidationError(_("Invlid Url"))
 
 
     @api.onchange('zip')
@@ -42,7 +40,7 @@ class ResPartner(models.Model):
             if not zip_code:
                 return 
 
-            cep = self._get_cep(re.sub(r'[^A-Za-z0-9]+', r'', zip_code))
+            cep = self._get_cep(re.sub(r'[^0-9]+', r'', zip_code))
             if cep:
                 br_country = self.env['res.country'] \
                     .with_context(lang='en_US') \
